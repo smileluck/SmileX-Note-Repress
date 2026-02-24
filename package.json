@@ -9,7 +9,8 @@
     "preview": "rspress preview"
   },
   "dependencies": {
-    "@rspress/core": "^2.0.2"
+    "@rspress/core": "^2.0.2",
+    "rspress-plugin-giscus": "^1.0.4"
   },
   "devDependencies": {
     "@types/node": "^22.8.1",
