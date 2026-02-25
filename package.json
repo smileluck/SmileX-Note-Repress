@@ -1,5 +1,5 @@
 {
-  "name": "SmileX-Note-Repress",
+  "name": "smilex-note-repress",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "@rspress/core": "^2.0.2",
-    "rspress-plugin-giscus": "^1.0.4"
+    "rspress-plugin-devkit": "^1.0.0",
+    "rspress-plugin-giscus": "^1.0.4",
+    "rspress-plugin-resource": "^1.0.2"
   },
   "devDependencies": {
     "@types/node": "^22.8.1",
