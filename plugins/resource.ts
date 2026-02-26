@@ -1,18 +1,18 @@
 import type { RspressPlugin } from '@rspress/core';
 import {
-    PresetConfigMutator,
+    // PresetConfigMutator,
     unistVisit,
     type HASTRoot,
-    type MDASTRoot,
+    // type MDASTRoot,
     type RehypePluginFactory,
-    type RemarkPluginFactory,
+    // type RemarkPluginFactory,
 } from 'rspress-plugin-devkit';
 
 export interface RspressPluginResourceOptions {
     containerClassNames?: string[];
     justify?: 'center' | 'left' | 'right';
-    prefix?: string[];
-    convertPrefix?: string;
+    // prefix?: string[];
+    // convertPrefix?: string;
 }
 
 export function resourcePlugin(
@@ -24,7 +24,7 @@ export function resourcePlugin(
         markdown: {
             remarkPlugins: [
                 // 添加自定义的 remark 插件
-                [remarkPathReplace(), options]
+                // [remarkPathReplace(), options]
             ],
             rehypePlugins: [
                 // 添加自定义的 rehype 插件
@@ -37,40 +37,54 @@ export function resourcePlugin(
     };
 }
 
-function remarkPathReplace(): RemarkPluginFactory<RspressPluginResourceOptions> {
-    return (options) => {
-        const { prefix = ["assets"], convertPrefix = "./assets", } = options;
-        return (tree: MDASTRoot) => {
-            for (const node of tree.children) {
-                if (node.type === 'paragraph') {
-                    for (const child of node.children) {
-                        const childAny = child as any;
-                        const childUrl = childAny.url;
-                        if (isImageElement(child)) {
-                            childAny.url = replacePrefix(childUrl, prefix, convertPrefix);
-                        }
-                    }
-                } else if (node.type === 'mdxjsEsm') {
-                    const code = node.value;
+// function remarkPathReplace(): RemarkPluginFactory<RspressPluginResourceOptions> {
+//     return (options) => {
+// const { prefix = ["assets"], convertPrefix = "./assets", } = options;
+// return (tree: MDASTRoot) => {
+//     unistVisit(tree, "mdxjsEsm", (node) => {
+//         const code = node.value;
+//         node.value = code.replace(
+//             /from\s+['"]assets\/([^'"]+)['"]/g,
+//             (match, p1) => {
+//                 return `from '${replacePrefix(
+//                     `assets/${p1}`,
+//                     prefix,
+//                     convertPrefix
+//                 )}'`;
+//             }
+//         );
+//     });
 
-                    node.value = code.replace(
-                        /from\s+['"]assets\/([^'"]+)['"]/g,
-                        (match, p1) => {
-                            return `from '${replacePrefix(
-                                `assets/${p1}`,
-                                prefix,
-                                convertPrefix
-                            )}'`;
-                        }
-                    );
-                    // node.value = code.replace(/require\('([^']+)\)/g, (match, p1) => {
-                    //     return `require('${replacePrefix(p1, prefix, convertPrefix)}')`;
-                    // });
-                }
-            }
-        }
-    };
-}
+// for (const node of tree.children) {
+//     if (node.type === 'paragraph') {
+//         for (const child of node.children) {
+//             const childAny = child as any;
+//             const childUrl = childAny.url;
+//             if (isImageElement(child)) {
+//                 childAny.url = replacePrefix(childUrl, prefix, convertPrefix);
+//             }
+//         }
+//     } else if (node.type === 'mdxjsEsm') {
+//         const code = node.value;
+
+//         node.value = code.replace(
+//             /from\s+['"]assets\/([^'"]+)['"]/g,
+//             (match, p1) => {
+//                 return `from '${replacePrefix(
+//                     `assets/${p1}`,
+//                     prefix,
+//                     convertPrefix
+//                 )}'`;
+//             }
+//         );
+//         // node.value = code.replace(/require\('([^']+)\)/g, (match, p1) => {
+//         //     return `require('${replacePrefix(p1, prefix, convertPrefix)}')`;
+//         // });
+//     }
+// }
+//         }
+//     };
+// }
 
 function replacePrefix(url: string, prefix: string[], convertPrefix: string) {
     for (const p of prefix) {

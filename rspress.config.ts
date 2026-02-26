@@ -3,7 +3,7 @@ import { defineConfig } from '@rspress/core';
 import { pluginGiscus } from 'rspress-plugin-giscus'; // 或 rspress-plugin-code-giscus
 // import resourcePlugin from 'rspress-plugin-resource';
 import { resourcePlugin } from './plugins/resource.js';
-
+import { ResolveAssetsPlugin } from './plugins/resolve-plugin.js';
 
 export default defineConfig({
   root: path.join(__dirname, 'docs'),
@@ -34,15 +34,27 @@ export default defineConfig({
   }),
   resourcePlugin({
     justify: 'center',
-    prefix: ['assets'],
-  })],
+  })
+  ],
   // builderConfig: {
   //   resolve: {
   //     alias: (alias) => {
-  //       alias['assets'] = "./assets";
+  //       alias['assets'] =  path.resolve(__dirname, 'assets');
   //       console.log(alias);
   //       return alias;
   //     },
   //   },
   // },
+  //     },
+  //   },
+  // },
+  builderConfig: {
+    tools: {
+      rspack: (config) => {
+        // 确保 plugins 数组存在
+        config.plugins = config.plugins || [];
+        config.plugins.push(new ResolveAssetsPlugin());
+      }
+    }
+  },
 });
