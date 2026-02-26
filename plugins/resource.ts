@@ -86,14 +86,14 @@ export function resourcePlugin(
 //     };
 // }
 
-function replacePrefix(url: string, prefix: string[], convertPrefix: string) {
-    for (const p of prefix) {
-        if (url.startsWith(p)) {
-            return url.replace(p, convertPrefix);
-        }
-    }
-    return url;
-}
+// function replacePrefix(url: string, prefix: string[], convertPrefix: string) {
+//     for (const p of prefix) {
+//         if (url.startsWith(p)) {
+//             return url.replace(p, convertPrefix);
+//         }
+//     }
+//     return url;
+// }
 
 function rehypeAlignImage(): RehypePluginFactory<RspressPluginResourceOptions> {
     return (options) => {
