@@ -1,9 +1,9 @@
 import * as path from 'node:path';
 import { defineConfig } from '@rspress/core';
-import { pluginGiscus } from 'rspress-plugin-giscus'; // 或 rspress-plugin-code-giscus
-// import resourcePlugin from 'rspress-plugin-resource';
+import { pluginGiscus } from 'rspress-plugin-giscus'; // 或 rspress-plugin-code-giscus;
 import { resourcePlugin } from './plugins/resource.js';
-import { ResolveAssetsPlugin } from './plugins/resolve-plugin.js';
+import { AutoMetaPlugin } from './plugins/auto-meta-plugin'
+
 
 export default defineConfig({
   root: path.join(__dirname, 'docs'),
@@ -15,7 +15,7 @@ export default defineConfig({
   },
   route: {
     cleanUrls: true,
-    exclude: ['*/_*/**/*',"**/_*","*/_assets/**/*"],
+    exclude: ['*/_*/**/*', "**/_*", "*/_assets/**/*"],
   },
   themeConfig: {
     socialLinks: [
@@ -32,6 +32,9 @@ export default defineConfig({
     category: 'General',
     categoryId: 'DIC_kwDORXWUpM4C3GT9',
     lang: 'zh-CN',
+  }),
+  AutoMetaPlugin({
+    excludeDir: ['_assets'],
   }),
   resourcePlugin({
     justify: 'center',

@@ -11,6 +11,9 @@ importers:
       '@rspress/core':
         specifier: ^2.0.2
         version: 2.0.3(@types/react@19.2.14)
+      gray-matter:
+        specifier: ^4.0.3
+        version: 4.0.3
       rspress-plugin-devkit:
         specifier: ^1.0.0
         version: 1.0.0(@rspress/core@2.0.3(@types/react@19.2.14))

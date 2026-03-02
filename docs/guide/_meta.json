@@ -1,1 +1,8 @@
-["index"]
+[
+  "index",
+  {
+    "type": "file",
+    "name": "index",
+    "label": "index"
+  }
+]
