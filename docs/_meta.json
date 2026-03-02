@@ -1,0 +1,28 @@
+[
+  {
+    "type": "file",
+    "name": "index",
+    "label": "index"
+  },
+  {
+    "type": "dir",
+    "name": "crawl",
+    "label": "crawl",
+    "collapsible": true,
+    "collapsed": false
+  },
+  {
+    "type": "dir",
+    "name": "guide",
+    "label": "guide",
+    "collapsible": true,
+    "collapsed": false
+  },
+  {
+    "type": "dir",
+    "name": "public",
+    "label": "public",
+    "collapsible": true,
+    "collapsed": false
+  }
+]

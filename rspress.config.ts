@@ -1,9 +1,9 @@
 import * as path from 'node:path';
 import { defineConfig } from '@rspress/core';
-import { pluginGiscus } from 'rspress-plugin-giscus'; // 或 rspress-plugin-code-giscus
-// import resourcePlugin from 'rspress-plugin-resource';
+import { pluginGiscus } from 'rspress-plugin-giscus'; // 或 rspress-plugin-code-giscus;
 import { resourcePlugin } from './plugins/resource.js';
-import { ResolveAssetsPlugin } from './plugins/resolve-plugin.js';
+import { AutoMetaPlugin } from './plugins/auto-meta-plugin'
+
 
 export default defineConfig({
   root: path.join(__dirname, 'docs'),
@@ -14,7 +14,8 @@ export default defineConfig({
     dark: '/rspress-dark-logo.png',
   },
   route: {
-    exclude: ['*/assets/**/*'],
+    cleanUrls: true,
+    exclude: ['*/_*/**/*', "**/_*", "*/_assets/**/*"],
   },
   themeConfig: {
     socialLinks: [
@@ -32,29 +33,30 @@ export default defineConfig({
     categoryId: 'DIC_kwDORXWUpM4C3GT9',
     lang: 'zh-CN',
   }),
+  AutoMetaPlugin({
+    excludeDir: ['_assets'],
+  }),
   resourcePlugin({
     justify: 'center',
   })
   ],
   // builderConfig: {
-  //   resolve: {
-  //     alias: (alias) => {
-  //       alias['assets'] =  path.resolve(__dirname, 'assets');
-  //       console.log(alias);
-  //       return alias;
-  //     },
+  //   source: {
+  //     assetsInclude: /\.pdf$/,
   //   },
+  //   tools: {
+  //     rspack: (config, { addRules }) => {
+  //       // 确保 plugins 数组存在
+  //       config.plugins = config.plugins || [];
+  //       config.plugins.push(new ResolveAssetsPlugin());
+
+  //       addRules([
+  //         {
+  //           test: /\.pdf$/,
+  //           // 将资源转换为单独的文件，并且导出产物地址
+  //           type: 'asset/resource',
+  //         }])
+  //     }
+  //   }
   // },
-  //     },
-  //   },
-  // },
-  builderConfig: {
-    tools: {
-      rspack: (config) => {
-        // 确保 plugins 数组存在
-        config.plugins = config.plugins || [];
-        config.plugins.push(new ResolveAssetsPlugin());
-      }
-    }
-  },
 });
