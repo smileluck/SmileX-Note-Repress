@@ -140,7 +140,13 @@ function generateMeta(dir: string, opts: Required<AutoMetaPluginOptions>) {
   /* ---------- 生成目录项 ---------- */
 
   if (opts.generateDirMeta) {
-    const sortedDirs = [...subDirs].sort(opts.sort)
+    let sortedDirs = [...subDirs].sort(opts.sort)
+
+    if (opts.indexFirst) {
+      sortedDirs = sortedDirs.sort((a, b) =>
+        a.startsWith('index') ? -1 : b.startsWith('index') ? 1 : 0
+      )
+    }
 
     for (const subdir of sortedDirs) {
       const oldItem = existingMap.get(subdir)
