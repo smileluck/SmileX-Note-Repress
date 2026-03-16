@@ -1,8 +1,7 @@
 [
-  "index",
   {
     "type": "file",
     "name": "index",
-    "label": "index"
+    "label": "测试"
   }
 ]

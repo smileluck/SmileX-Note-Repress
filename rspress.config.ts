@@ -35,6 +35,11 @@ export default defineConfig({
   }),
   AutoMetaPlugin({
     excludeDir: ['_assets'],
+    index: {
+      first: true,
+      name: '测试',
+    },
+    enableDiffLog: false,
   }),
   resourcePlugin({
     justify: 'center',

@@ -2,19 +2,12 @@
   {
     "type": "file",
     "name": "index",
-    "label": "index"
+    "label": "测试"
   },
   {
     "type": "dir",
     "name": "crawl",
     "label": "crawl",
-    "collapsible": true,
-    "collapsed": false
-  },
-  {
-    "type": "dir",
-    "name": "_sss",
-    "label": "_sss",
     "collapsible": true,
     "collapsed": false
   }
