@@ -4,191 +4,181 @@ import matter from 'gray-matter'
 import type { RspressPlugin } from '@rspress/core'
 
 export interface AutoMetaPluginOptions {
-    applyInProd?: boolean
-    applyInDev?: boolean
-    overwrite?: boolean
-    removeOrphan?: boolean
-    useFrontmatter?: boolean
-    indexFirst?: boolean
-    generateDirMeta?: boolean
-    include?: RegExp[]
-    exclude?: RegExp[]
-    excludeDir?: (string | RegExp)[]
-    filter?: (filePath: string) => boolean
-    sort?: (a: string, b: string) => number
+  applyInProd?: boolean
+  applyInDev?: boolean
+  indexFirst?: boolean
+  generateDirMeta?: boolean
+  useFrontmatter?: boolean
+  include?: RegExp[]
+  exclude?: RegExp[]
+  excludeDir?: (string | RegExp)[]
+  filter?: (filePath: string) => boolean
+  sort?: (a: string, b: string) => number
 }
 
 const defaultOptions: Required<AutoMetaPluginOptions> = {
-    applyInProd: true,
-    applyInDev: true,
-    overwrite: false,
-    removeOrphan: false,
-    useFrontmatter: true,
-    indexFirst: true,
-    generateDirMeta: true,
-    include: [/\.md$/, /\.mdx$/],
-    exclude: [],
-    excludeDir: [],
-    filter: () => true,
-    sort: (a, b) => a.localeCompare(b)
+  applyInProd: true,
+  applyInDev: true,
+  indexFirst: true,
+  generateDirMeta: true,
+  useFrontmatter: true,
+  include: [/\.md$/, /\.mdx$/],
+  exclude: [],
+  excludeDir: [],
+  filter: () => true,
+  sort: (a, b) => a.localeCompare(b)
 }
 
 export function AutoMetaPlugin(
-    options: AutoMetaPluginOptions = {}
+  options: AutoMetaPluginOptions = {}
 ): RspressPlugin {
-    const opts = { ...defaultOptions, ...options }
+  const opts = { ...defaultOptions, ...options }
 
-    return {
-        name: 'auto-meta-plugin',
+  return {
+    name: 'auto-meta-plugin',
 
-        async beforeBuild(config, isProd) {
-            if (isProd && !opts.applyInProd) return
-            if (!isProd && !opts.applyInDev) return
+    async beforeBuild(config, isProd) {
+      if (isProd && !opts.applyInProd) return
+      if (!isProd && !opts.applyInDev) return
 
-            const docsDir = path.resolve(config.root || "docs")
-            walk(docsDir, opts)
-        }
+      const docsDir = path.resolve(config.root || 'docs')
+      walk(docsDir, opts)
     }
+  }
 }
 
 /* ======================= 核心逻辑 ======================= */
 
 function generateMeta(dir: string, opts: Required<AutoMetaPluginOptions>) {
-    if (!fs.existsSync(dir)) return
+  if (!fs.existsSync(dir)) return
 
-    const entries = fs.readdirSync(dir, { withFileTypes: true })
+  const entries = fs.readdirSync(dir, { withFileTypes: true })
 
-    if (
-        opts.excludeDir.some(rule =>
-            typeof rule === 'string'
-                ? path.basename(dir) === rule
-                : rule.test(dir)
-        )
-    ) {
-        console.log("exclude dir:", dir)
-        return
-    }
+  // 排除目录
+  if (
+    opts.excludeDir.some(rule =>
+      typeof rule === 'string'
+        ? path.basename(dir) === rule
+        : rule.test(dir)
+    )
+  ) {
+    return
+  }
 
-    const files = entries
-        .filter(e => e.isFile())
-        .map(e => e.name)
-        .filter(name =>
-            opts.include.some(r => r.test(name)) &&
-            !opts.exclude.some(r => r.test(name)) &&
-            opts.filter(path.join(dir, name))
-        )
+  const files = entries
+    .filter(e => e.isFile())
+    .map(e => e.name)
+    .filter(name =>
+      opts.include.some(r => r.test(name)) &&
+      !opts.exclude.some(r => r.test(name)) &&
+      opts.filter(path.join(dir, name))
+    )
 
-    const subDirs = entries
-        .filter(e => e.isDirectory())
-        .map(e => e.name)
-        .filter(name =>
-            !opts.excludeDir.some(rule =>
-                typeof rule === 'string'
-                    ? name === rule
-                    : rule.test(name)
-            )
-        )
+  const subDirs = entries
+    .filter(e => e.isDirectory())
+    .map(e => e.name)
+    .filter(name =>
+      !opts.excludeDir.some(rule =>
+        typeof rule === 'string'
+          ? name === rule
+          : rule.test(name)
+      )
+    )
 
-    if (!files.length && !subDirs.length) return
+  if (!files.length && !subDirs.length) return
 
-    const metaPath = path.join(dir, '_meta.json')
+  const metaPath = path.join(dir, '_meta.json')
 
-    let existing: any[] = []
-    if (!opts.overwrite && fs.existsSync(metaPath)) {
-        try {
-            existing = JSON.parse(fs.readFileSync(metaPath, 'utf-8'))
-        } catch { }
-    }
-
-    let result: any[] = opts.overwrite ? [] : [...existing]
-
-    const exists = (item: any) =>
-        result.some(i =>
-            typeof i === 'string' && typeof item === 'string'
-                ? i === item
-                : i?.name && item?.name && i.name === item.name
-        )
-
-    /* ---------- 文件排序 ---------- */
-    let sortedFiles = [...files].sort(opts.sort)
-
-    if (opts.indexFirst) {
-        sortedFiles = sortedFiles.sort((a, b) =>
-            a.startsWith('index') ? -1 : b.startsWith('index') ? 1 : 0
-        )
-    }
-
-    /* ---------- 处理文件 ---------- */
-    for (const file of sortedFiles) {
-        const name = file.replace(/\.(md|mdx)$/, '')
-        let label = name
-
-        if (opts.useFrontmatter) {
-            try {
-                const raw = fs.readFileSync(path.join(dir, file), 'utf-8')
-                const { data } = matter(raw)
-                if (data.title) label = data.title
-            } catch { }
+  // 读取旧 meta 仅用于 merge 字段
+  let existingMap = new Map<string, any>()
+  if (fs.existsSync(metaPath)) {
+    try {
+      const old = JSON.parse(fs.readFileSync(metaPath, 'utf-8'))
+      for (const item of old) {
+        if (item?.name) {
+          existingMap.set(item.name, item)
         }
+      }
+    } catch {}
+  }
 
-        const item = { type: 'file', name, label }
+  let result: any[] = []
 
-        if (!exists(item)) {
-            result.push(item)
-        }
+  /* ---------- 文件排序 ---------- */
+
+  let sortedFiles = [...files].sort(opts.sort)
+
+  if (opts.indexFirst) {
+    sortedFiles = sortedFiles.sort((a, b) =>
+      a.startsWith('index') ? -1 : b.startsWith('index') ? 1 : 0
+    )
+  }
+
+  /* ---------- 生成文件项 ---------- */
+
+  for (const file of sortedFiles) {
+    const name = file.replace(/\.(md|mdx)$/, '')
+    let label = name
+
+    if (opts.useFrontmatter) {
+      try {
+        const raw = fs.readFileSync(path.join(dir, file), 'utf-8')
+        const { data } = matter(raw)
+        if (data.title) label = data.title
+      } catch {}
     }
 
-    /* ---------- 处理目录 ---------- */
-    if (opts.generateDirMeta) {
-        for (const subdir of subDirs) {
-            const item = {
-                type: 'dir',
-                name: subdir,
-                label: subdir,
-                collapsible: true,
-                collapsed: false
-            }
+    const oldItem = existingMap.get(name)
 
-            if (!exists(item)) {
-                result.push(item)
-            }
-        }
+    result.push({
+      type: 'file',
+      name,
+      label: oldItem?.label ?? label
+    })
+  }
+
+  /* ---------- 生成目录项 ---------- */
+
+  if (opts.generateDirMeta) {
+    const sortedDirs = [...subDirs].sort(opts.sort)
+
+    for (const subdir of sortedDirs) {
+      const oldItem = existingMap.get(subdir)
+
+      result.push({
+        type: 'dir',
+        name: subdir,
+        label: oldItem?.label ?? subdir,
+        collapsible: oldItem?.collapsible ?? true,
+        collapsed: oldItem?.collapsed ?? false
+      })
     }
+  }
 
-    /* ---------- 删除孤儿项 ---------- */
-    if (opts.removeOrphan) {
-        const validNames = [
-            ...sortedFiles.map(f => f.replace(/\.(md|mdx)$/, '')),
-            ...subDirs
-        ]
+  /* ---------- 避免无变化写入 ---------- */
 
-        result = result.filter(item =>
-            typeof item === 'string'
-                ? validNames.includes(item)
-                : validNames.includes(item.name)
-        )
-    }
+  const newContent = JSON.stringify(result, null, 2)
+  const oldContent = fs.existsSync(metaPath)
+    ? fs.readFileSync(metaPath, 'utf-8')
+    : ''
 
-    /* ---------- 避免无变化写入 ---------- */
-    const newContent = JSON.stringify(result, null, 2)
-    const oldContent = fs.existsSync(metaPath)
-        ? fs.readFileSync(metaPath, 'utf-8')
-        : ''
-
-    if (newContent !== oldContent) {
-        fs.writeFileSync(metaPath, newContent)
-    }
+  if (newContent !== oldContent) {
+    fs.writeFileSync(metaPath, newContent)
+  }
 }
 
 /* ======================= 递归遍历 ======================= */
 
 function walk(dir: string, opts: Required<AutoMetaPluginOptions>) {
-    generateMeta(dir, opts)
+  if (!fs.existsSync(dir)) return
 
-    const entries = fs.readdirSync(dir, { withFileTypes: true })
-    for (const entry of entries) {
-        if (entry.isDirectory()) {
-            walk(path.join(dir, entry.name), opts)
-        }
+  generateMeta(dir, opts)
+
+  const entries = fs.readdirSync(dir, { withFileTypes: true })
+
+  for (const entry of entries) {
+    if (entry.isDirectory()) {
+      walk(path.join(dir, entry.name), opts)
     }
+  }
 }

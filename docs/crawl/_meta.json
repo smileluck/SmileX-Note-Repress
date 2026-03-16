@@ -10,12 +10,5 @@
     "label": "crawl",
     "collapsible": true,
     "collapsed": false
-  },
-  {
-    "type": "dir",
-    "name": "_sss",
-    "label": "_sss",
-    "collapsible": true,
-    "collapsed": false
   }
 ]
