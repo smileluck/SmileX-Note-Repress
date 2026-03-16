@@ -37,8 +37,9 @@ export default defineConfig({
     excludeDir: ['_assets'],
     index: {
       first: true,
-      name: '首页',
+      name: '测试',
     },
+    enableDiffLog: false,
   }),
   resourcePlugin({
     justify: 'center',

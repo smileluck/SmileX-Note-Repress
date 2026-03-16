@@ -46,6 +46,63 @@ export interface AutoMetaPluginOptions {
   excludeDir?: (string | RegExp)[]
   filter?: (filePath: string) => boolean
   sort?: (a: string, b: string) => number
+  /**
+   * 是否启用差异更新日志
+   * 启用后会在控制台输出详细的差异信息
+   */
+  enableDiffLog?: boolean
+  /**
+   * 是否保留原有的 collapsible 和 collapsed 配置
+   * 默认为 true
+   */
+  preserveCollapsible?: boolean
+}
+
+/**
+ * Meta 条目类型
+ */
+export interface MetaItem {
+  type?: 'file' | 'dir'
+  name: string
+  label?: string
+  collapsible?: boolean
+  collapsed?: boolean
+}
+
+/**
+ * 差异报告类型
+ */
+export interface DiffReport {
+  added: MetaItem[]
+  removed: MetaItem[]
+  modified: Array<{
+    item: MetaItem
+    oldItem: MetaItem
+    changes: string[]
+  }>
+  unchanged: MetaItem[]
+  timestamp: string
+  filePath: string
+}
+
+/**
+ * 更新日志类型
+ */
+export interface UpdateLog {
+  timestamp: string
+  filePath: string
+  summary: {
+    total: number
+    added: number
+    removed: number
+    modified: number
+    unchanged: number
+  }
+  details: Array<{
+    type: 'add' | 'remove' | 'modify' | 'unchanged'
+    name: string
+    description: string
+  }>
 }
 
 const defaultOptions: Required<Omit<AutoMetaPluginOptions, 'index'>> & { index: Required<IndexOptions> } = {
@@ -62,7 +119,9 @@ const defaultOptions: Required<Omit<AutoMetaPluginOptions, 'index'>> & { index: 
   exclude: [],
   excludeDir: [],
   filter: () => true,
-  sort: (a, b) => a.localeCompare(b)
+  sort: (a, b) => a.localeCompare(b),
+  enableDiffLog: false,
+  preserveCollapsible: true
 }
 
 export function AutoMetaPlugin(
@@ -101,6 +160,206 @@ export function AutoMetaPlugin(
 }
 
 /* ======================= 核心逻辑 ======================= */
+
+/**
+ * 验证 Meta 条目的格式正确性和完整性
+ * @param items Meta 条目数组
+ * @returns 验证结果和错误信息
+ */
+function validateMetaStructure(items: any[]): { valid: boolean; errors: string[] } {
+  const errors: string[] = []
+
+  if (!Array.isArray(items)) {
+    errors.push('Meta 数据必须是数组类型')
+    return { valid: false, errors }
+  }
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]
+    
+    if (!item || typeof item !== 'object') {
+      errors.push(`索引 ${i}: 条目必须是对象类型`)
+      continue
+    }
+
+    if (!item.name || typeof item.name !== 'string') {
+      errors.push(`索引 ${i}: 条目必须包含 name 字段且为字符串`)
+    }
+
+    if (item.type && !['file', 'dir'].includes(item.type)) {
+      errors.push(`索引 ${i}: type 必须是 'file' 或 'dir'`)
+    }
+
+    if (item.collapsible !== undefined && typeof item.collapsible !== 'boolean') {
+      errors.push(`索引 ${i}: collapsible 必须是布尔值`)
+    }
+
+    if (item.collapsed !== undefined && typeof item.collapsed !== 'boolean') {
+      errors.push(`索引 ${i}: collapsed 必须是布尔值`)
+    }
+  }
+
+  return { valid: errors.length === 0, errors }
+}
+
+/**
+ * 对比新旧 Meta 结构，生成详细的差异报告
+ * @param newItems 新的 Meta 条目
+ * @param oldItems 旧的 Meta 条目
+ * @param filePath 文件路径（用于报告）
+ * @returns 差异报告
+ */
+function generateDiffReport(newItems: MetaItem[], oldItems: MetaItem[], filePath: string): DiffReport {
+  const oldMap = new Map<string, MetaItem>()
+  for (const item of oldItems) {
+    oldMap.set(item.name, item)
+  }
+
+  const newMap = new Map<string, MetaItem>()
+  for (const item of newItems) {
+    newMap.set(item.name, item)
+  }
+
+  const report: DiffReport = {
+    added: [],
+    removed: [],
+    modified: [],
+    unchanged: [],
+    timestamp: new Date().toISOString(),
+    filePath
+  }
+
+  for (const newItem of newItems) {
+    const oldItem = oldMap.get(newItem.name)
+    
+    if (!oldItem) {
+      report.added.push(newItem)
+    } else {
+      const changes: string[] = []
+      
+      if (newItem.label !== oldItem.label) {
+        changes.push(`label: "${oldItem.label}" -> "${newItem.label}"`)
+      }
+      if (newItem.type !== oldItem.type) {
+        changes.push(`type: "${oldItem.type}" -> "${newItem.type}"`)
+      }
+      if (newItem.collapsible !== oldItem.collapsible) {
+        changes.push(`collapsible: ${oldItem.collapsible} -> ${newItem.collapsible}`)
+      }
+      if (newItem.collapsed !== oldItem.collapsed) {
+        changes.push(`collapsed: ${oldItem.collapsed} -> ${newItem.collapsed}`)
+      }
+
+      if (changes.length > 0) {
+        report.modified.push({ item: newItem, oldItem, changes })
+      } else {
+        report.unchanged.push(newItem)
+      }
+    }
+  }
+
+  for (const oldItem of oldItems) {
+    if (!newMap.has(oldItem.name)) {
+      report.removed.push(oldItem)
+    }
+  }
+
+  return report
+}
+
+/**
+ * 生成更新日志
+ * @param report 差异报告
+ * @returns 更新日志
+ */
+function generateUpdateLog(report: DiffReport): UpdateLog {
+  const details: UpdateLog['details'] = []
+
+  for (const item of report.added) {
+    details.push({
+      type: 'add',
+      name: item.name,
+      description: `新增条目: ${item.name} (type: ${item.type || 'file'})`
+    })
+  }
+
+  for (const item of report.removed) {
+    details.push({
+      type: 'remove',
+      name: item.name,
+      description: `移除条目: ${item.name}`
+    })
+  }
+
+  for (const mod of report.modified) {
+    details.push({
+      type: 'modify',
+      name: mod.item.name,
+      description: `修改条目: ${mod.item.name}, 变更: ${mod.changes.join('; ')}`
+    })
+  }
+
+  for (const item of report.unchanged) {
+    details.push({
+      type: 'unchanged',
+      name: item.name,
+      description: `未变更: ${item.name}`
+    })
+  }
+
+  const total = report.added.length + report.removed.length + report.modified.length + report.unchanged.length
+
+  return {
+    timestamp: report.timestamp,
+    filePath: report.filePath,
+    summary: {
+      total,
+      added: report.added.length,
+      removed: report.removed.length,
+      modified: report.modified.length,
+      unchanged: report.unchanged.length
+    },
+    details
+  }
+}
+
+/**
+ * 输出差异日志到控制台
+ * @param report 差异报告
+ */
+function logDiffReport(report: DiffReport): void {
+  console.log('\n========== Meta 差异报告 ==========')
+  console.log(`文件: ${report.filePath}`)
+  console.log(`时间: ${report.timestamp}`)
+  console.log('-----------------------------------')
+
+  if (report.added.length > 0) {
+    console.log(`\n[新增] ${report.added.length} 项:`)
+    for (const item of report.added) {
+      console.log(`  + ${item.name} (label: ${item.label}, type: ${item.type || 'file'})`)
+    }
+  }
+
+  if (report.removed.length > 0) {
+    console.log(`\n[移除] ${report.removed.length} 项:`)
+    for (const item of report.removed) {
+      console.log(`  - ${item.name}`)
+    }
+  }
+
+  if (report.modified.length > 0) {
+    console.log(`\n[修改] ${report.modified.length} 项:`)
+    for (const mod of report.modified) {
+      console.log(`  ~ ${mod.item.name}: ${mod.changes.join('; ')}`)
+    }
+  }
+
+  if (report.unchanged.length > 0) {
+    console.log(`\n[未变更] ${report.unchanged.length} 项`)
+  }
+
+  console.log('\n=====================================\n')
+}
 
 function generateMeta(dir: string, opts: Required<AutoMetaPluginOptions>) {
   if (!fs.existsSync(dir)) return
@@ -242,6 +501,35 @@ function generateMeta(dir: string, opts: Required<AutoMetaPluginOptions>) {
     : ''
 
   if (newContent !== oldContent) {
+    const oldItems: MetaItem[] = []
+    if (fs.existsSync(metaPath)) {
+      try {
+        const parsed = JSON.parse(oldContent)
+        oldItems.push(...parsed)
+      } catch {
+        console.warn(`[auto-meta-plugin] 警告: 无法解析现有 _meta.json 文件: ${metaPath}`)
+      }
+    }
+
+    const validation = validateMetaStructure(result)
+    if (!validation.valid) {
+      console.error(`[auto-meta-plugin] 错误: 新 Meta 结构验证失败 - ${metaPath}`)
+      for (const error of validation.errors) {
+        console.error(`  - ${error}`)
+      }
+      return
+    }
+
+    const diffReport = generateDiffReport(result, oldItems, metaPath)
+
+    if (opts.enableDiffLog) {
+      logDiffReport(diffReport)
+    }
+
+    const updateLog = generateUpdateLog(diffReport)
+    console.log(`[auto-meta-plugin] Meta 已更新: ${metaPath}`)
+    console.log(`  新增: ${updateLog.summary.added}, 移除: ${updateLog.summary.removed}, 修改: ${updateLog.summary.modified}`)
+
     fs.writeFileSync(metaPath, newContent)
   }
 }
