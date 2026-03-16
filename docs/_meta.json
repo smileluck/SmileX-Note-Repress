@@ -7,7 +7,7 @@
   {
     "type": "dir",
     "name": "crawl",
-    "label": "crawl",
+    "label": "爬虫",
     "collapsible": true,
     "collapsed": false
   },
@@ -21,7 +21,7 @@
   {
     "type": "dir",
     "name": "public",
-    "label": "public",
+    "label": "公共",
     "collapsible": true,
     "collapsed": false
   }
