@@ -3,10 +3,42 @@ import path from 'path'
 import matter from 'gray-matter'
 import type { RspressPlugin } from '@rspress/core'
 
+/**
+ * index 配置选项
+ */
+export interface IndexOptions {
+  /**
+   * 控制 index.md 文件在生成的 _meta.json 中的标签显示
+   * - 设置为 false 时，标签显示为 "index"
+   * - 设置为字符串时，标签显示为该字符串
+   * - 未配置时，默认显示为 "首页"
+   */
+  name?: string | false
+
+  /**
+   * 控制 index.md 文件是否排在最前面
+   * 当设置为 true 时，index 文件会优先显示
+   */
+  first?: boolean
+
+  /**
+   * 是否覆盖用户在 _meta.json 中手动配置的 label
+   * - 设置为 true 时，会用 name 配置的值覆盖用户自定义的 label
+   * - 设置为 false 时，保留用户自定义的 label
+   * - 未配置时，默认为 true
+   */
+  rewrite?: boolean
+}
+
 export interface AutoMetaPluginOptions {
   applyInProd?: boolean
   applyInDev?: boolean
-  indexFirst?: boolean
+  /**
+   * index 文件配置
+   * - 配置为 boolean 时，true 等同于 { first: true, name: '首页' }
+   * - 配置为对象时，可同时设置 name、first 和 rewrite 属性
+   */
+  index?: IndexOptions | boolean
   generateDirMeta?: boolean
   useFrontmatter?: boolean
   include?: RegExp[]
@@ -16,10 +48,14 @@ export interface AutoMetaPluginOptions {
   sort?: (a: string, b: string) => number
 }
 
-const defaultOptions: Required<AutoMetaPluginOptions> = {
+const defaultOptions: Required<Omit<AutoMetaPluginOptions, 'index'>> & { index: Required<IndexOptions> } = {
   applyInProd: true,
   applyInDev: true,
-  indexFirst: true,
+  index: {
+    name: '首页',
+    first: true,
+    rewrite: true
+  },
   generateDirMeta: true,
   useFrontmatter: true,
   include: [/\.md$/, /\.mdx$/],
@@ -33,6 +69,23 @@ export function AutoMetaPlugin(
   options: AutoMetaPluginOptions = {}
 ): RspressPlugin {
   const opts = { ...defaultOptions, ...options }
+
+  // 处理 index 配置
+  if (options.index !== undefined) {
+    if (typeof options.index === 'boolean') {
+      opts.index = {
+        name: '首页',
+        first: options.index,
+        rewrite: true
+      }
+    } else {
+      opts.index = {
+        name: options.index.name !== undefined ? options.index.name : '首页',
+        first: options.index.first !== undefined ? options.index.first : true,
+        rewrite: options.index.rewrite !== undefined ? options.index.rewrite : true
+      }
+    }
+  }
 
   return {
     name: 'auto-meta-plugin',
@@ -99,7 +152,7 @@ function generateMeta(dir: string, opts: Required<AutoMetaPluginOptions>) {
           existingMap.set(item.name, item)
         }
       }
-    } catch {}
+    } catch { }
   }
 
   let result: any[] = []
@@ -108,7 +161,7 @@ function generateMeta(dir: string, opts: Required<AutoMetaPluginOptions>) {
 
   let sortedFiles = [...files].sort(opts.sort)
 
-  if (opts.indexFirst) {
+  if (opts.index && (opts.index as IndexOptions).first) {
     sortedFiles = sortedFiles.sort((a, b) =>
       a.startsWith('index') ? -1 : b.startsWith('index') ? 1 : 0
     )
@@ -120,20 +173,40 @@ function generateMeta(dir: string, opts: Required<AutoMetaPluginOptions>) {
     const name = file.replace(/\.(md|mdx)$/, '')
     let label = name
 
-    if (opts.useFrontmatter) {
+    const isIndexFile = name.toLowerCase() === 'index'
+    const hasOptsIndex = opts.index !== undefined && opts.index !== false
+
+
+    if (opts.useFrontmatter && !isIndexFile) {
       try {
         const raw = fs.readFileSync(path.join(dir, file), 'utf-8')
         const { data } = matter(raw)
         if (data.title) label = data.title
-      } catch {}
+      } catch { }
     }
 
     const oldItem = existingMap.get(name)
 
+    // 处理 index 文件的 label 配置
+    if (isIndexFile && hasOptsIndex) {
+      const optsIndex = opts.index as IndexOptions
+      const shouldRewrite = optsIndex.rewrite !== false
+
+      if (shouldRewrite || !oldItem?.label) {
+        if (optsIndex.name === false) {
+          label = 'index'
+        } else if (typeof optsIndex.name === 'string') {
+          label = optsIndex.name
+        } else {
+          label = '首页'
+        }
+      }
+    }
+
     result.push({
       type: 'file',
       name,
-      label: oldItem?.label ?? label
+      label: isIndexFile ? label : (oldItem?.label ?? label)
     })
   }
 
@@ -142,7 +215,7 @@ function generateMeta(dir: string, opts: Required<AutoMetaPluginOptions>) {
   if (opts.generateDirMeta) {
     let sortedDirs = [...subDirs].sort(opts.sort)
 
-    if (opts.indexFirst) {
+    if (opts.index && (opts.index as IndexOptions).first) {
       sortedDirs = sortedDirs.sort((a, b) =>
         a.startsWith('index') ? -1 : b.startsWith('index') ? 1 : 0
       )

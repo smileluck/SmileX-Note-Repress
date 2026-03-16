@@ -35,6 +35,10 @@ export default defineConfig({
   }),
   AutoMetaPlugin({
     excludeDir: ['_assets'],
+    index: {
+      first: true,
+      name: '首页',
+    },
   }),
   resourcePlugin({
     justify: 'center',
