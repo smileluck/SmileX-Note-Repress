@@ -30,27 +30,75 @@ export interface IndexOptions {
   rewrite?: boolean
 }
 
+/**
+ * 自动生成 Rspress 项目中 _meta.json 文件的插件
+ * 用于自动化管理文档目录的导航配置
+ */
 export interface AutoMetaPluginOptions {
+  /**
+   * 是否在生产环境启用插件
+   * 默认为 true
+   */
   applyInProd?: boolean
+
+  /**
+   * 是否在开发环境启用插件
+   * 默认为 true
+   */
   applyInDev?: boolean
+
   /**
    * index 文件配置
    * - 配置为 boolean 时，true 等同于 { first: true, name: '首页' }
    * - 配置为对象时，可同时设置 name、first 和 rewrite 属性
    */
   index?: IndexOptions | boolean
+
+  /**
+   * 是否自动生成目录的 _meta.json 文件
+   * 默认为 true
+   */
   generateDirMeta?: boolean
+
+  /**
+   * 是否从 Markdown 文件的 frontmatter 中读取 title 作为导航标签
+   * 默认为 true
+   */
   useFrontmatter?: boolean
+
+  /**
+   * 需要处理的文件匹配正则表达式数组
+   * 默认为 [/\.md$/, /\.mdx$/]
+   */
   include?: RegExp[]
+
+  /**
+   * 需要排除的文件匹配正则表达式数组
+   */
   exclude?: RegExp[]
+
+  /**
+   * 需要排除的目录名称或正则表达式数组
+   */
   excludeDir?: (string | RegExp)[]
+
+  /**
+   * 自定义过滤器函数，用于判断是否处理某个文件
+   */
   filter?: (filePath: string) => boolean
+
+  /**
+   * 自定义排序函数，用于对文件/目录进行排序
+   */
   sort?: (a: string, b: string) => number
+
   /**
    * 是否启用差异更新日志
    * 启用后会在控制台输出详细的差异信息
+   * 默认为 false
    */
   enableDiffLog?: boolean
+
   /**
    * 是否保留原有的 collapsible 和 collapsed 配置
    * 默认为 true
@@ -124,6 +172,11 @@ const defaultOptions: Required<Omit<AutoMetaPluginOptions, 'index'>> & { index: 
   preserveCollapsible: true
 }
 
+/**
+ * 创建 AutoMeta 插件实例
+ * @param options - 插件配置选项
+ * @returns Rspress 插件对象
+ */
 export function AutoMetaPlugin(
   options: AutoMetaPluginOptions = {}
 ): RspressPlugin {
@@ -361,6 +414,11 @@ function logDiffReport(report: DiffReport): void {
   console.log('\n=====================================\n')
 }
 
+/**
+ * 生成单个目录的 _meta.json 文件
+ * @param dir - 目录路径
+ * @param opts - 插件配置选项
+ */
 function generateMeta(dir: string, opts: Required<AutoMetaPluginOptions>) {
   if (!fs.existsSync(dir)) return
 
@@ -536,6 +594,11 @@ function generateMeta(dir: string, opts: Required<AutoMetaPluginOptions>) {
 
 /* ======================= 递归遍历 ======================= */
 
+/**
+ * 递归遍历目录并生成 _meta.json 文件
+ * @param dir - 目录路径
+ * @param opts - 插件配置选项
+ */
 function walk(dir: string, opts: Required<AutoMetaPluginOptions>) {
   if (!fs.existsSync(dir)) return
 
